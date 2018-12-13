@@ -25,6 +25,18 @@ def retrieve_neighbors(index_center, data, eps_spatial, eps_temporal):
     return neigborhood
 
 def st_dbscan(data, eps_spatial, eps_temporal, min_neighbors):
+    """
+        Cluster data
+
+        Input:
+            data :: pandas.DataFrame with columns --> latitude, longitude, initial_time, end_time
+            eps_spatial :: float representing the temporal epsilon in seconds
+            eps_temporal :: float representing spatial epsilon in meters
+            min_neighbors :: int
+
+        Output:
+            data :: pandas.DataFrame with the same input columns with the extra column cluster which indicates the id of the cluster
+    """
         cluster = 0
         unmarked = 888888
         noise = -1
@@ -56,55 +68,3 @@ def st_dbscan(data, eps_spatial, eps_temporal, min_neighbors):
                                     data.at[neig_index, 'cluster'] = cluster
                                     stack.append(neig_index)
         return data
-
-def clustering(data, eps_spatial, eps_temporal):
-    """
-    Cluster alerts
-
-    Input:
-    data :: pd.Dataframe with columns --> latitude, longitude, initial_time, end_time, uuid (grouped by uuid)
-    eps_spatial :: float representing the temporal epsilon in seconds
-    eps_temporal :: float representing spatial epsilon in meters
-
-    output:
-        clusters ::  list of dict. Each dict with the keys
-              'cluster_id': int or string,
-              'alerts_uuid': list of uuids,
-              'initial_time' : timestamp,
-              'end_time' : timestamp,
-              'total_time' : timestamp,
-              'estimated_center' : {'latitude': float, 'longitude': float}
-      """
-
-    if not data.empty:
-        data = st_dbscan(data, eps_spatial, eps_temporal, 0).sort_values('cluster')
-        clusters = []
-        cluster = 0
-        uuid = []
-        lat = 0
-        long = 0
-        initial_time = 0
-        end_time = 0
-        for index, alert in data.iterrows():
-            if alert['cluster']!=cluster:
-                if uuid:
-                    clusters.append({'cluster':cluster, 'uuids':uuid, 'initial_time':initial_time,
-                                       'end_time':end_time, 'total_time':end_time-initial_time,
-                                      'estimated_center' : {'latitude': lat/len(uuid), 'longitude': long/len(uuid)}})
-                uuid = []
-                lat = 0
-                long = 0
-                initial_time = alert['initial_time']
-                end_time = alert['end_time']
-                cluster = alert['cluster']
-            uuid.append(alert['uuid'])
-            lat += alert['latitude']
-            long += alert['longitude']
-            if alert['initial_time'] < initial_time:
-                initial_time = alert['initial_time']
-            if alert['end_time'] > end_time:
-                end_time = alert['end_time']
-        clusters.append({'cluster':cluster, 'uuids':uuid, 'initial_time':initial_time,
-                           'end_time':end_time, 'total_time':end_time-initial_time,
-                          'estimated_center' : {'latitude': lat/len(uuid), 'longitude': long/len(uuid)}})
-        return clusters
